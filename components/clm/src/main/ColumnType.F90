@@ -18,16 +18,20 @@ module ColumnType
   !   74 => (icol_road_imperv) urban impervious road
   !   75 => (icol_road_perv)   urban pervious road
   !
-  use shr_kind_mod   , only : r8 => shr_kind_r8
-  use shr_infnan_mod , only : nan => shr_infnan_nan, assignment(=)
-  use clm_varpar     , only : nlevsno, nlevgrnd, nlevlak
-  use clm_varcon     , only : spval, ispval
+  use shr_kind_mod         , only : r8 => shr_kind_r8
+  use shr_infnan_mod       , only : nan => shr_infnan_nan, assignment(=)
+  use clm_varctl           , only : use_ed_planthydraulics
+  use clm_varpar           , only : nlevsno, nlevgrnd, nlevsoi, nlevlak
+  use clm_varcon           , only : spval, ispval
+  !use EDPlantHydraulics    , only : nshell
+  
   !
   ! !PUBLIC TYPES:
   implicit none
   save
   private
   !
+  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
   type, public :: column_type
      ! g/l/c/p hierarchy, local g/l/c/p cells only
      integer , pointer :: landunit             (:)   ! index into landunit level quantities
@@ -54,6 +58,10 @@ module ColumnType
      real(r8), pointer :: dz                   (:,:) ! layer thickness (m)  (-nlevsno+1:nlevgrnd) 
      real(r8), pointer :: z                    (:,:) ! layer depth (m) (-nlevsno+1:nlevgrnd) 
      real(r8), pointer :: zi                   (:,:) ! interface level below a "z" level (m) (-nlevsno+0:nlevgrnd) 
+     real(r8), pointer :: r_out_shell          (:,:,:) ! outer radius of rhizosphere compartment (m) for each layer
+     real(r8), pointer :: r_node_shell         (:,:,:) ! nodal radius of rhizosphere compartment (m) for each layer
+     real(r8), pointer :: v_shell              (:,:,:) ! shell volume for single rhizosphere (m) for each layer
+     real(r8), pointer :: l_aroot_col          (:,:) ! total absorbing root length (m) for each layer
      real(r8), pointer :: zii                  (:)   ! convective boundary height [m]
      real(r8), pointer :: dz_lake              (:,:) ! lake layer thickness (m)  (1:nlevlak)
      real(r8), pointer :: z_lake               (:,:) ! layer depth for lake (m)
@@ -95,6 +103,12 @@ contains
     allocate(this%dz          (begc:endc,-nlevsno+1:nlevgrnd)) ; this%dz          (:,:) = nan
     allocate(this%z           (begc:endc,-nlevsno+1:nlevgrnd)) ; this%z           (:,:) = nan
     allocate(this%zi          (begc:endc,-nlevsno+0:nlevgrnd)) ; this%zi          (:,:) = nan
+    if(use_ed_planthydraulics == 1) then
+    allocate(this%r_out_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%r_out_shell (:,:,:) = nan
+    allocate(this%r_node_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%r_node_shell (:,:,:) = nan
+    allocate(this%v_shell     (begc:endc,1:nlevsoi,1:nshell)) ; this%v_shell     (:,:,:) = nan
+    allocate(this%l_aroot_col (begc:endc,1:nlevsoi))          ; this%l_aroot_col (:,:) = nan
+    end if
     allocate(this%zii         (begc:endc))                     ; this%zii         (:)   = nan
     allocate(this%lakedepth   (begc:endc))                     ; this%lakedepth   (:)   = spval  
     allocate(this%dz_lake     (begc:endc,nlevlak))             ; this%dz_lake     (:,:) = nan
@@ -128,6 +142,12 @@ contains
     deallocate(this%dz         )
     deallocate(this%z          )
     deallocate(this%zi         )
+    if(use_ed_planthydraulics == 1) then
+    deallocate(this%r_out_shell)
+    deallocate(this%r_node_shell)
+    deallocate(this%v_shell    )
+    deallocate(this%l_aroot_col)
+    end if
     deallocate(this%zii        )
     deallocate(this%lakedepth  )
     deallocate(this%dz_lake    )

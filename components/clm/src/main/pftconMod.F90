@@ -10,12 +10,14 @@ module pftconMod
   use abortutils  , only : endrun
   use clm_varpar  , only : mxpft, numrad, ivis, inir
   use clm_varctl  , only : iulog, use_cndv, use_vertsoilc
+  !use EDPlantHydraulicsMod, only: n_porous_media
   !
   ! !PUBLIC TYPES:
   implicit none
   !
   ! Vegetation type constants
   !
+  integer             , parameter :: n_porous_media    = 5  ! 
   integer :: noveg                  ! value for not vegetated 
   integer :: ndllf_evr_tmp_tree     ! value for Needleleaf evergreen temperate tree
   integer :: ndllf_evr_brl_tree     ! value for Needleleaf evergreen boreal tree
@@ -138,7 +140,7 @@ module pftconMod
      real(r8), allocatable :: grpnow        (:)   ! growth respiration parameter
      real(r8), allocatable :: rootprof_beta (:)   ! CLM rooting distribution parameter for C and N inputs [unitless]
 
-     !  crop
+     !crop
      real(r8), allocatable :: graincn       (:)   ! grain C:N (gC/gN)
      real(r8), allocatable :: mxtmp         (:)   ! parameter used in accFlds
      real(r8), allocatable :: baset         (:)   ! parameter used in accFlds
@@ -222,7 +224,38 @@ module pftconMod
      real(r8), allocatable :: pftpar29      (:)   ! max coldest monthly mean temperature
      real(r8), allocatable :: pftpar30      (:)   ! min growing degree days (>= 5 deg C)
      real(r8), allocatable :: pftpar31      (:)   ! upper limit of temperature of the warmest month (twmax)
+     
+     ! pft parameters for plant hydraulics (PFT x tissue type (leaf, stem, troot, aroot))
+     real(r8), allocatable :: avuln_gs      (:)   ! stomata PLC: vulnerability curve shape parameter         [-]
+     real(r8), allocatable :: p50_gs        (:)   ! stomata PLC: water potential at 50% loss of conductivity [Pa]    
+     real(r8), allocatable :: kmax_node     (:,:) ! xylem PLC: maximum xylem hydraulic conductivity          [kg m-1 s-1 Pa-1]
+     real(r8), allocatable :: avuln_node    (:,:) ! xylem PLC: vulnerability curve shape parameter           [-]
+     real(r8), allocatable :: p50_node      (:,:) ! xylem PLC: water potential at 50% loss of conductivity   [Pa]    
+     real(r8), allocatable :: thetas_node   (:,:) ! P-V curve: saturated volumetric water content for node   [m3 m-3]
+     real(r8), allocatable :: epsil_node    (:,:) ! P-V curve: bulk elastic modulus                          [MPa]
+     real(r8), allocatable :: pinot_node    (:,:) ! P-V curve: osmotic potential at full turgor              [MPa]
+     real(r8), allocatable :: pitlp_node    (:,:) ! P-V curve: osmotic potential at turgor loss              [MPa]
+     real(r8), allocatable :: resid_node    (:,:) ! P-V curve: residual fraction                             [-]
+     real(r8), allocatable :: rttlp_node    (:,:) ! P-V curve: total relative water content at turgor loss   [g or m3 H2O / g or m3 H2O, sat]
+     
+     real(r8), allocatable :: fcap_node     (:,:) ! P-V curve: fraction of (1-resid_node) that is capillary in source [-]
+     real(r8), allocatable :: rwcft_node    (:,:) ! P-V curve: total RWC @ which elastic drainage begins     [-]
+     real(r8), allocatable :: rwccap_node   (:,:) ! P-V curve: total RWC @ which capillary reserves exhausted
+     real(r8), allocatable :: slp_node      (:,:) ! P-V curve: slope of capillary region of curve (sapwood only)
+     real(r8), allocatable :: intercept_node (:,:) ! P-V curve: intercept of capillary region of curve (sapwood only)
+     real(r8), allocatable :: corrInt_node  (:,:) ! P-V curve: correction for nonzero psi0
 
+     real(r8), allocatable :: rs1           (:)   ! mean absorbing fine root radius                          [m]       ~ 0.001 m?
+     real(r8), allocatable :: rootdens      (:)   ! root density                                             [kg m-3]  ~ 0.4e5 g/cm3 for tropical angiosperms, cf Metcalfe et al. 2007 Plant Soil
+     real(r8), allocatable :: srl           (:)   ! specific root length                                     [m kg-1]  ~ 15000 for tropical angiosperms, cf Metcalfe et al. 2008 Plant Soil Fig. 2b; rootdens = 500 kg m-3 is biased high by an order of magnitude (cf Comas et al. 2002 Oecologia); SPA rootdens implies a SRL of only 637 m kg-1.
+     real(r8), allocatable :: ccontent      (:)   ! carbon content (fraction of dry mass)                    [-]       ~ 0.47 for tropical angiosperms, cf Thomas & Martin (2012) Forests
+     real(r8), allocatable :: lma           (:)   ! leaf mass per area                                       [g m-2]   ~ 90 for tropical angiosperms, cf Patino et al. 2012  (existing param 'slatop' is biased high)
+     real(r8), allocatable :: leafthick     (:)   ! leaf thickness                                           [m]       ~ 0.00021 for tropical angiosperms, BC & LR unpubl data Caxiuana
+     real(r8), allocatable :: latosa        (:)   ! leaf to sapwood area ratio                               [m2 cm-2] ~ 0.8 for tropical angiosperms, cf Patino et al. 2012
+     real(r8), allocatable :: rfrac_stem    (:)   ! fraction of total tree resistance (under well-watered conditions) from troot to canopy (i.e., aboveground) [-] ~ 0.625 for tropical angiosperms, cf BC re-analysis of Fisher et al. 2006
+     real(r8), allocatable :: rootshoot     (:)   ! root:shoot ratio (belowground-to-aboveground biomass)    [-]       ~ 0.20 for tropical forests (see Houghton et al. 2001 Table 3, Cairns et al. 1997 Table 2, Jackson et al. 1996 Table 3)
+     
+  
    contains
 
      procedure, public  :: Init
@@ -377,6 +410,32 @@ contains
     allocate( this%pftpar29      (0:mxpft) )   
     allocate( this%pftpar30      (0:mxpft) )   
     allocate( this%pftpar31      (0:mxpft) )   
+    allocate( this%avuln_gs      (0:mxpft) )
+    allocate( this%p50_gs        (0:mxpft) )
+    allocate( this%kmax_node     (0:mxpft,n_porous_media) )
+    allocate( this%avuln_node    (0:mxpft,n_porous_media) )
+    allocate( this%p50_node      (0:mxpft,n_porous_media) )
+    allocate( this%thetas_node   (0:mxpft,n_porous_media) )
+    allocate( this%epsil_node    (0:mxpft,n_porous_media) )
+    allocate( this%pinot_node    (0:mxpft,n_porous_media) )
+    allocate( this%pitlp_node    (0:mxpft,n_porous_media) )
+    allocate( this%resid_node    (0:mxpft,n_porous_media) )
+    allocate( this%rttlp_node    (0:mxpft,n_porous_media) )
+    allocate( this%fcap_node     (0:mxpft,n_porous_media) )
+    allocate( this%rwcft_node    (0:mxpft,n_porous_media) )
+    allocate( this%rwccap_node   (0:mxpft,n_porous_media) )
+    allocate( this%slp_node      (0:mxpft,n_porous_media) )
+    allocate( this%intercept_node (0:mxpft,n_porous_media) )
+    allocate( this%corrInt_node  (0:mxpft,n_porous_media) )
+    allocate( this%rs1           (0:mxpft) )
+    allocate( this%rootdens      (0:mxpft) )
+    allocate( this%srl           (0:mxpft) )
+    allocate( this%ccontent      (0:mxpft) )
+    allocate( this%lma           (0:mxpft) )
+    allocate( this%leafthick     (0:mxpft) )
+    allocate( this%latosa        (0:mxpft) )
+    allocate( this%rfrac_stem    (0:mxpft) )
+    allocate( this%rootshoot     (0:mxpft) )
 
   end subroutine InitAllocate
 

@@ -13,6 +13,7 @@ module SoilWaterMovementMod
   private
   !
   ! !PUBLIC MEMBER FUNCTIONS:
+  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
   public :: SoilWater            ! Calculate soil hydrology   
   public :: init_soilwater_movement
   !
@@ -160,6 +161,7 @@ contains
     ! hydraulics.
     !
     !USES:
+    use clm_varctl       , only : use_ed_planthydraulics
     use decompMod        , only : bounds_type
     use shr_kind_mod     , only : r8 => shr_kind_r8
     use clm_varpar       , only : nlevsoi, max_patch_per_col
@@ -237,7 +239,11 @@ contains
           if (temp(c) /= 0._r8) then
              rootr_col(c,j) = rootr_col(c,j)/temp(c)
           end if
-          vert_tran_sink(c,j) = rootr_col(c,j)*qflx_tran_veg_col(c)
+          if(use_ed_planthydraulics /= 0) then
+             vert_tran_sink(c,j) = 0._r8
+          else
+             vert_tran_sink(c,j) = rootr_col(c,j)*qflx_tran_veg_col(c)
+	  end if !use_ed_planthydraulics
        end do
     end do
 
@@ -318,6 +324,8 @@ contains
     use decompMod                  , only : bounds_type        
     use clm_varcon                 , only : wimp,grav,hfus,tfrz
     use clm_varcon                 , only : e_ice,denh2o, denice
+    use clm_varctl                 , only : use_ed_planthydraulics
+    !use EDPlantHydraulics          , only : nshell
     use clm_varpar                 , only : nlevsoi, max_patch_per_col, nlevgrnd
     use clm_time_manager           , only : get_step_size
     use column_varcon              , only : icol_roof, icol_road_imperv
@@ -762,6 +770,10 @@ contains
          do j = 1, nlevsoi
             h2osoi_liq(c,j) = h2osoi_liq(c,j) + dwat2(c,j)*dzmm(c,j)
          end do
+	 
+	 if( use_ed_planthydraulics == 1) then
+	    call hydraulics_parse_dwat(waterstate_inst, dwat2(c,:)*dzmm(c,:), c)
+	 end if !use_ed_planthydraulics
 
          ! calculate qcharge for case jwt < nlevsoi
          if(jwt(c) < nlevsoi) then
@@ -824,5 +836,131 @@ contains
     end associate 
          
    end subroutine soilwater_zengdecker2009
+
+
+  !-----------------------------------------------------------------------
+  subroutine hydraulics_parse_dwat(waterstate_inst, dwat2, c)
+    !
+    ! Created by Brad Christoffersen, Jan 2016
+    !
+    ! !DESCRIPTION:
+    ! Parses out mean vertical water fluxes resulting from infiltration,
+    ! drainage, and vertical water movement (dwat2) over radially stratified
+    ! rhizosphere shells.
+    !
+    ! The approach used is heuristic, but based on the principle that water
+    ! fluxing out of a layer will preferentially come from rhizosphere
+    ! shells with higher water contents/potentials within that layer, and
+    ! alternatively, that water fluxing into a layer will preferentially come
+    ! from shells with lower water contents/potentials.
+    !
+    ! This principle is implemented by filling (draining) the rhizosphere
+    ! shells in order from the driest (wettest) shell to the wettest (driest).
+    ! Each shell is filled (drained) up (down) to the next wettest (driest)
+    ! shell until the change in mean layer water (dwat2) is accounted for.
+    !
+    ! !USES:
+    use shr_kind_mod       , only : r8 => shr_kind_r8     
+    use clm_varcon         , only : denh2o
+    use clm_varctl         , only : iulog
+    use clm_varpar         , only : nlevsoi
+    use WaterStateType     , only : waterstate_type
+    use ColumnType         , only : col
+    use GridcellType       , only : grc
+    !
+    ! !ARGUMENTS:
+    type(waterstate_type) , intent(inout) :: waterstate_inst
+    real(r8), intent(in)   :: dwat2(nlevsoi)                         ! change in layer water content                                 [kg/m2]
+    integer, intent(in)    :: c                                      ! column index
+    !
+    ! !LOCAL VARIABLES:
+    integer                :: g,j,k                                  ! gridcell, soil layer, rhizosphere shell indicies
+    integer                :: i,f,ff,kk                              ! indicies
+    integer                :: indexc,indexj                          ! column and layer indices where there is a water balance error
+    real(r8)               :: ordered(nshell) = (/(i,i=1,nshell,1)/) ! array of rhizosphere indices which have been ordered
+    real(r8)               :: area_col                               ! column area                                                   [m2]
+    real(r8)               :: dwat3                                  ! water remaining to be distributed across shells               [kg]
+    real(r8)               :: thdiff                                 ! water content difference between ordered adjacent rhiz shells [m3 m-3]
+    real(r8)               :: wdiff                                  ! mass of water represented by thdiff over previous k shells    [kg]
+    real(r8)               :: errh2o(nlevsoi)                        ! water budget error after updating                             [kg/m2]
+    real(r8)               :: h2osoi_liq_shell(nlevsoi,nshell)       !
+    real(r8)               :: tmp                                    ! temporary
+    logical                :: found                                  ! flag in search loop
+    !-----------------------------------------------------------------------
+
+    associate(& 
+         area_gcell        =>   grc%area                           , & ! Input:  [real(r8) (:)    ] gridcell area (km2)
+         wtgcell           =>   col%wtgcell                        , & ! Input:  [real(r8) (:)    ] weight (relative to gridcell)
+         v_shell           =>   col%v_shell                        , & ! Input:  [real(r8) (:,:,:)] 
+         h2osoi_liq_col    =>   waterstate_inst%h2osoi_liq_col     , & ! Input:  [real(r8) (:,:)  ] column liquid water by layer (kg/m2)                            
+         h2osoi_vol_shell  =>   waterstate_inst%h2osoi_vol_shell     & ! Input:  [real(r8) (:,:,:)] volumetric liquid water by rhizosphere shell (kg/m2)
+         )
+
+    g                      = col%gridcell(c)
+    area_col               = area_gcell(g) * wtgcell(c) * 1.e6_r8
+
+    do j = 1,nlevsoi
+       dwat3 = dwat2(j) * area_col
+       
+       ! order shells in terms of increasing or decreasing volumetric water content
+       ! algorithm same as that used in histFileMod.F90 to alphabetize history tape contents
+       do k = nshell-1,1,-1
+          do kk = 1,k
+             if (h2osoi_vol_shell(c,j,kk) > h2osoi_vol_shell(c,j,kk+1)) then
+                if (dwat3 > 0._r8) then  !order increasing
+  		   tmp           = ordered(kk)
+		   ordered(kk)   = ordered(kk+1)
+		   ordered(kk+1) = tmp
+                end if
+             else
+                if (dwat3 < 0._r8) then  !order decreasing
+  		   tmp           = ordered(kk)
+		   ordered(kk)   = ordered(kk+1)
+		   ordered(kk+1) = tmp
+                end if
+	     end if
+          enddo
+       enddo
+       
+       ! fill shells with water up to the water content of the next-wettest shell, in order from driest to wettest (dwat3 > 0)
+       ! ------ OR ------
+       ! drain shells' water down to the water content of the next-driest shell, in order from wettest to driest (dwat3 < 0)
+       k = 1
+       do while ( dwat3 /= 0._r8 )
+          thdiff = h2osoi_vol_shell(c,j,ordered(k+1)) - h2osoi_vol_shell(c,j,ordered(k))
+	  wdiff  = thdiff * sum(v_shell(c,j,ordered(1:k))) * denh2o
+	  if(abs(dwat3) >= abs(wdiff)) then
+	     h2osoi_vol_shell(c,j,ordered(1:k)) = h2osoi_vol_shell(c,j,ordered(k+1))
+             dwat3  = dwat3 - wdiff
+	  else
+	     h2osoi_vol_shell(c,j,ordered(1:k)) = h2osoi_vol_shell(c,j,ordered(1:k)) + wdiff/denh2o/sum(v_shell(c,j,ordered(1:k)))
+             dwat3  = 0._r8
+	  end if
+	  k = k + 1
+       enddo
+
+       h2osoi_liq_shell(j,:) = h2osoi_vol_shell(c,j,:) * v_shell(c,j,:) * denh2o
+       
+    enddo
+    
+    ! balance check
+    do j = 1,nlevsoi
+       errh2o(j) = sum(h2osoi_liq_shell(j,:))/area_col - h2osoi_liq_col(c,j)
+       if (abs(errh2o(j)) > 1.e-9_r8) then
+          found = .true.
+	  indexc = c
+          indexj = j
+          if( found ) then
+                write(iulog,*)'WARNING:  water balance error ',&
+                     ' local indexc= ',indexc,&
+                     ' local indexj= ',indexj,&
+                     ' errh2o= ',errh2o(indexj)
+          end if
+       end if
+    enddo
+    
+    end associate 
+         
+   end subroutine hydraulics_parse_dwat
 
  end module SoilWaterMovementMod

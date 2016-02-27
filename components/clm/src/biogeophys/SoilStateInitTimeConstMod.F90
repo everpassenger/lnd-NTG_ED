@@ -453,7 +453,9 @@ contains
 
                 ipedof=get_ipedof(0)
                 call pedotransf(ipedof, sand, clay, &
-                     soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat)
+                     soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat, &
+		     soilstate_inst%watres_col(c,lev), soilstate_inst%alpha_VG_col(c,lev), soilstate_inst%n_VG_col(c,lev), &
+		     soilstate_inst%m_VG_col(c,lev), soilstate_inst%l_VG_col(c,lev))
 
                 om_watsat         = max(0.93_r8 - 0.1_r8   *(zsoi(lev)/zsapric), 0.83_r8)
                 om_b              = min(2.7_r8  + 9.3_r8   *(zsoi(lev)/zsapric), 12.0_r8)

@@ -11,16 +11,20 @@ module WaterstateType
   use shr_log_mod    , only : errMsg => shr_log_errMsg
   use decompMod      , only : bounds_type
   use clm_varctl     , only : use_vancouver, use_mexicocity, use_cn, iulog, use_luna
+  use clm_varctl     , only : use_ed_planthydraulics
   use clm_varpar     , only : nlevgrnd, nlevurb, nlevsno   
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
   use ColumnType     , only : col                
+  !use EDPlantHydraulicsMod, only : nshell   !BC...added
+
   !
   implicit none
   save
   private
   !
   ! !PUBLIC TYPES:
+  integer, parameter :: nshell = 11 ! number of concentric soil cylinders surrounding absorbing root
   type, public :: waterstate_type
 
      logical , pointer :: do_capsnow_col         (:)   ! col true => do snow capping
@@ -37,6 +41,7 @@ module WaterstateType
      real(r8), pointer :: h2osno_col             (:)   ! col snow water (mm H2O)
      real(r8), pointer :: h2osno_old_col         (:)   ! col snow mass for previous time step (kg/m2) (new)
      real(r8), pointer :: h2osoi_liq_col         (:,:) ! col liquid water (kg/m2) (new) (-nlevsno+1:nlevgrnd)    
+     real(r8), pointer :: h2osoi_vol_shell       (:,:,:) ! volumetric liquid water content by layer and rhizosphere shell (v/v) (new) (-nlevsno+1:nlevgrnd,1:nshell) !BOC...for ED plant hydraulics
      real(r8), pointer :: h2osoi_ice_col         (:,:) ! col ice lens (kg/m2) (new) (-nlevsno+1:nlevgrnd)    
      real(r8), pointer :: h2osoi_liqice_10cm_col (:)   ! col liquid water + ice lens in top 10cm of soil (kg/m2)
      real(r8), pointer :: h2osoi_vol_col         (:,:) ! col volumetric soil water (0<=h2osoi_vol<=watsat) [m3/m3]  (nlevgrnd)
@@ -184,6 +189,11 @@ contains
     allocate(this%h2osoi_liqvol_col      (begc:endc,-nlevsno+1:nlevgrnd)) ; this%h2osoi_liqvol_col      (:,:) = nan
     allocate(this%h2osoi_ice_col         (begc:endc,-nlevsno+1:nlevgrnd)) ; this%h2osoi_ice_col         (:,:) = nan
     allocate(this%h2osoi_liq_col         (begc:endc,-nlevsno+1:nlevgrnd)) ; this%h2osoi_liq_col         (:,:) = nan
+
+    if(use_ed_planthydraulics /=  0) then
+    allocate(this%h2osoi_vol_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%h2osoi_vol_shell    (:,:,:) = nan
+    end if
+
     allocate(this%h2ocan_patch           (begp:endp))                     ; this%h2ocan_patch           (:)   = nan  
     allocate(this%h2ocan_col             (begc:endc))                     ; this%h2ocan_col             (:)   = nan
     allocate(this%snocan_patch           (begp:endp))                     ; this%snocan_patch           (:)   = nan  
@@ -1040,3 +1050,4 @@ contains
   end subroutine Reset
 
 end module WaterstateType
+

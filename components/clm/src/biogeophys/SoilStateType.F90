@@ -39,6 +39,11 @@ module SoilStateType
      real(r8), pointer :: smpmin_col           (:)   ! col restriction for min of soil potential (mm) 
      real(r8), pointer :: bsw_col              (:,:) ! col Clapp and Hornberger "b" (nlevgrnd)  
      real(r8), pointer :: watsat_col           (:,:) ! col volumetric soil water at saturation (porosity) 
+     real(r8), pointer :: watres_col           (:,:) ! col volumetric residual soil water             (for van Genuchten SWC only)
+     real(r8), pointer :: alpha_VG_col         (:,:) ! col inverse of air-entry pressure     [MPa-1]  (for van Genuchten SWC only)
+     real(r8), pointer :: n_VG_col             (:,:) ! col pore-size distribution index      [-]      (for van Genuchten SWC only)
+     real(r8), pointer :: m_VG_col             (:,:) ! = 1 - 1/n_VG                          [-]      (for van Genuchten SWC only)
+     real(r8), pointer :: l_VG_col             (:,:) ! col pore tortuosity parameter         [-]      (for van Genuchten SWC only)
      real(r8), pointer :: watdry_col           (:,:) ! col btran parameter for btran = 0
      real(r8), pointer :: watopt_col           (:,:) ! col btran parameter for btran = 1
      real(r8), pointer :: watfc_col            (:,:) ! col volumetric soil water at field capacity (nlevsoi)
@@ -127,6 +132,8 @@ contains
 
     allocate(this%bsw_col              (begc:endc,nlevgrnd))            ; this%bsw_col              (:,:) = nan
     allocate(this%watsat_col           (begc:endc,nlevgrnd))            ; this%watsat_col           (:,:) = nan
+    allocate(this%watres_col           (begc:endc,nlevgrnd))            ; this%watres_col           (:,:) = nan
+    allocate(this%alpha_VG_col         (begc:endc,nlevgrnd))            ; this%alpha_VG_col         (:,:) = nan
     allocate(this%watdry_col           (begc:endc,nlevgrnd))            ; this%watdry_col           (:,:) = spval
     allocate(this%watopt_col           (begc:endc,nlevgrnd))            ; this%watopt_col           (:,:) = spval
     allocate(this%watfc_col            (begc:endc,nlevgrnd))            ; this%watfc_col            (:,:) = nan

@@ -574,16 +574,47 @@ contains
 
             ceair = min( max(eair(p), 0.05_r8*esat_tv(p)), esat_tv(p) ) 
             ! Loop through canopy layers (above snow). Only do calculations if daytime
-            do CL = 1, NCL_p
-               do FT = 1,numpft_ed
+ 	    
+ !==============================================================================!
+ ! BOC... NOTE1: Instead of copying and pasting this module to make a cohort-based routine,
+ !               I pasted in only the relevant parts of Chonggang's looping structure in discrete
+ !               blocks and commented out the original patch-based loop structures.
+ ! BOC... NOTE2: The above Nitrogen scaling factors still need to be brought back within
+ !               this revised looping structure to get the cohort-specific vcmax25 and jmax25 parameters
+ !==============================================================================!
+ !
+ ! BLOCK 1 OPTION 1: Default patch-based scheme   START
+ !            do CL = 1, NCL_p
+ !               do FT = 1,numpft_ed
+ ! BLOCK 1 OPTION 1: Default patch-based scheme   END
+ ! BLOCK 1 OPTION 2: CX cohort-based scheme       START
+             if(currentPatch%countcohorts > 0.0)then  !avoid errors caused by empty patches 
+                currentCohort => currentPatch%tallest  ! Cohort loop
+                call t_startf('EDNPhotosynthesis')
+                do while (associated(currentCohort)) ! Cohort loop
+                   if(currentCohort%n > 0._r8)then   
+                      ! Zero cohort flux accumulators.
+                      currentCohort%npp_clm    = 0._r8
+                      currentCohort%resp_clm   = 0._r8
+                      ! Select canopy layer and PFT.
+                      FT = currentCohort%pft  !are we going to have ftindex?
+                      CL = currentCohort%canopy_layer
+ ! BLOCK 1 OPTION 2: CX cohort-based scheme       END
+ 
                   if (nint(c3psn(FT)) == 1)then
                      ps = 1
                   else
                      ps = 2
                   end if
-                  if(currentPatch%present(CL,FT) == 1)then ! are there any leaves of this pft in this layer?     
-                     do iv = 1, currentPatch%nrad(CL,FT)
-                        if ( DEBUG ) write(iulog,*) 'EDphoto 581 ',currentPatch%ed_parsun_z(CL,ft,iv)
+ 
+ ! BLOCK 2 OPTION 1: Default patch-based scheme   START
+ !                  if(currentPatch%present(CL,FT) == 1)then ! are there any leaves of this pft in this layer?     
+ !                     do iv = 1, currentPatch%nrad(CL,FT)
+ ! BLOCK 2 OPTION 1: Default patch-based scheme   END
+ ! BLOCK 2 OPTION 2: CX cohort-based scheme       START
+                      do iv = 1, currentCohort%nv
+ ! BLOCK 2 OPTION 2: CX cohort-based scheme       END
+                         if ( DEBUG ) write(iulog,*) 'EDphoto 581 ',currentPatch%ed_parsun_z(CL,ft,iv)
                         if (currentPatch%ed_parsun_z(CL,FT,iv) <= 0._r8) then  ! night time
 
                            ac = 0._r8
@@ -803,38 +834,38 @@ contains
                            
                         end if    ! night or day 
                      end do   ! iv canopy layer 
-                  end if    ! present(L,ft) ? rd_array
-               end do  ! PFT loop
-            end do  !canopy layer
-
-            call t_stopf('edfluxes')
-            call t_startf('edunpack')
-
-            !==============================================================================!
-            ! Unpack fluxes from arrays into cohorts
-            !==============================================================================!
-
-            call currentPatch%set_root_fraction()
-
-            if(currentPatch%countcohorts > 0.0)then  !avoid errors caused by empty patches 
-
-               currentCohort => currentPatch%tallest  ! Cohort loop
-
-               do while (associated(currentCohort)) ! Cohort loop
-                  call t_startf('edfluxunpack1')
-
-                  if(currentCohort%n > 0._r8)then   
-
-                     ! Zero cohort flux accumulators.
-                     currentCohort%npp_clm  = 0.0_r8
-                     currentCohort%resp_clm = 0.0_r8
-                     currentCohort%gpp_clm  = 0.0_r8
-                     currentCohort%rd       = 0.0_r8
-                     currentCohort%resp_m   = 0.0_r8
-
-                     ! Select canopy layer and PFT.
-                     FT = currentCohort%pft  !are we going to have ftindex?
-                     CL  = currentCohort%canopy_layer
+!LANL!                  end if    ! present(L,ft) ? rd_array
+!LANL!               end do  ! PFT loop
+!LANL!            end do  !canopy layer
+!LANL!
+!LANL!            call t_stopf('edfluxes')
+!LANL!            call t_startf('edunpack')
+!LANL!
+!LANL!            !==============================================================================!
+!LANL!            ! Unpack fluxes from arrays into cohorts
+!LANL!            !==============================================================================!
+!LANL!
+!LANL!            call currentPatch%set_root_fraction()
+!LANL!
+!LANL!            if(currentPatch%countcohorts > 0.0)then  !avoid errors caused by empty patches 
+!LANL!
+!LANL!               currentCohort => currentPatch%tallest  ! Cohort loop
+!LANL!
+!LANL!               do while (associated(currentCohort)) ! Cohort loop
+!LANL!                  call t_startf('edfluxunpack1')
+!LANL!
+!LANL!                  if(currentCohort%n > 0._r8)then   
+!LANL!
+!LANL!                     ! Zero cohort flux accumulators.
+!LANL!                     currentCohort%npp_clm  = 0.0_r8
+!LANL!                     currentCohort%resp_clm = 0.0_r8
+!LANL!                     currentCohort%gpp_clm  = 0.0_r8
+!LANL!                     currentCohort%rd       = 0.0_r8
+!LANL!                     currentCohort%resp_m   = 0.0_r8
+!LANL!
+!LANL!                     ! Select canopy layer and PFT.
+!LANL!                     FT = currentCohort%pft  !are we going to have ftindex?
+!LANL!                     CL  = currentCohort%canopy_layer
                      !------------------------------------------------------------------------------
                      ! Accumulate fluxes over the sub-canopy layers of each cohort.
                      !------------------------------------------------------------------------------
