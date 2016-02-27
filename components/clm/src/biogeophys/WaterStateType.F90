@@ -12,7 +12,7 @@ module WaterstateType
   use decompMod      , only : bounds_type
   use clm_varctl     , only : use_vancouver, use_mexicocity, use_cn, iulog, use_luna
   use clm_varctl     , only : use_ed_planthydraulics
-  use clm_varpar     , only : nlevgrnd, nlevurb, nlevsno   
+  use clm_varpar     , only : nlevgrnd, nlevurb, nlevsno, nlevsoi
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
   use ColumnType     , only : col                
