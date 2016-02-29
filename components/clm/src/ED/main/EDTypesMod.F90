@@ -3,14 +3,24 @@ module EDTypesMod
   use shr_kind_mod , only : r8 => shr_kind_r8;
   use decompMod    , only : bounds_type 
   use clm_varpar   , only : nlevcan_ed, nclmax, numrad, nlevgrnd, mxpft
+  use clm_varpar   , only : nlevsoi, nlevsoi_hyd
   use domainMod    , only : domain_type
   use shr_sys_mod  , only : shr_sys_flush
+  !use EDPlantHydraulicsMod, only : npool_ag, npool_bg, nshell   ! BOC...discretized # of above-, below-ground, and rhizosphere nodes
 
   implicit none
   save
 
   !SWITCHES THAT ARE READ IN
   integer         RESTART                                  ! restart flag, 1= read initial system state 0 = bare ground
+
+  integer             , parameter :: npool_leaf  = 1                      ! 
+  integer             , parameter :: npool_stem  = 1                      ! 
+  integer             , parameter :: npool_troot = 1                      ! 
+  integer             , parameter :: npool_aroot = 1                      ! 
+  integer             , parameter :: npool_ag    = npool_leaf+npool_stem  ! number of aboveground plant water storage nodes
+  integer             , parameter :: npool_bg    = npool_troot            ! number of belowground plant water storage nodes (except absorbing roots)
+  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
 
   ! MODEL PARAMETERS
   real(r8)            :: timestep_secs                     ! subdaily timestep in seconds (e.g. 1800 or 3600) 
@@ -134,7 +144,7 @@ module EDTypesMod
      real(r8) ::  prom_weight                            ! How much of this cohort is promoted each year, as a proportion of all cohorts:-
      integer  ::  nv                                     ! Number of leaf layers: -
      integer  ::  status_coh                             ! growth status of plant  (2 = leaves on , 1 = leaves off)
-     real(r8) ::  c_area                                 ! areal extent of canopy (m2)
+     real(r8) ::  c_area                                 ! areal extent of canopy across all individuals (m2)
      real(r8) ::  treelai                                ! lai of tree (total leaf area (m2) / canopy area (m2)
      real(r8) ::  treesai                                ! stem area index of tree (total stem area (m2) / canopy area (m2)
      logical  ::  isnew                                  ! flag to signify a new cohort, new cohorts have not experienced
@@ -207,7 +217,34 @@ module EDTypesMod
      real(r8) ::  cambial_mort                           ! probability that trees dies due to cambial char:-
      real(r8) ::  crownfire_mort                         ! probability of tree post-fire mortality due to crown scorch:-
      real(r8) ::  fire_mort                              ! post-fire mortality from cambial and crown damage assuming two are independent:-
+     
+     ! BC...PLANT HYDRAULICS - "constants" that change with size. Heights are referenced to soil surface (+ = above; - = below)
+     real(r8) ::  z_node_ag(npool_ag)                    ! nodal height of aboveground water storage compartments            [m]
+     real(r8) ::  z_node_bg(npool_bg)                    ! nodal height of belowground water storage compartments            [m]
+     real(r8) ::  z_node_aroot(nlevsoi_hyd)              ! nodal height of absorbing root water storage compartments         [m]
+     real(r8) ::  z_upper_ag(npool_ag)                   ! upper boundary height of aboveground water storage compartments   [m]
+     real(r8) ::  z_upper_bg(npool_bg)                   ! upper boundary height of belowground water storage compartments   [m]
+     real(r8) ::  z_lower_ag(npool_ag)                   ! lower boundary height of aboveground water storage compartments   [m]
+     real(r8) ::  z_lower_bg(npool_bg)                   ! lower boundary height of belowground water storage compartments   [m]
+     real(r8) ::  kmax_bound(npool_ag)                   ! maximum hydraulic conductance at lower boundary (canopy to troot) [kg s-1 MPa-1]
+     real(r8) ::  kmax_treebg_tot                        ! total belowground tree kmax (troot to surface of absorbing roots) [kg s-1 MPa-1]
+     real(r8) ::  kmax_treebg_layer(nlevsoi_hyd)         ! total belowground tree kmax partitioned by soil layer             [kg s-1 MPa-1]
+     real(r8) ::  v_ag(npool_ag)                         ! volume of aboveground water storage compartments                  [m3]
+     real(r8) ::  v_bg(npool_bg)                         ! volume of belowground water storage compartments                  [m3]
+     real(r8) ::  v_aroot_tot                            ! total volume of absorbing roots                                   [m3]
+     real(r8) ::  v_aroot_layer(nlevsoi_hyd)             ! volume of absorbing roots by soil layer                           [m3]
+     real(r8) ::  l_aroot_tot                            ! total length of absorbing roots                                   [m]
+     real(r8) ::  l_aroot_layer(nlevsoi_hyd)             ! length of absorbing roots by soil layer                           [m]
 
+     ! BC PLANT HYDRAULICS - state variables
+     real(r8) ::  th_ag(npool_ag)                        ! water in aboveground compartments                                 [kgh2o/indiv]
+     real(r8) ::  th_bg(npool_bg)                        ! water in belowground compartments                                 [kgh2o/indiv]
+     real(r8) ::  th_aroot(nlevsoi_hyd)                  ! water in absorbing roots                                          [kgh2o/indiv]
+     real(r8) ::  psi_ag(npool_ag)                       ! water potential in aboveground compartments                       [MPa]
+     real(r8) ::  psi_bg(npool_bg)                       ! water potential in belowground compartments                       [MPa]
+     real(r8) ::  psi_aroot(nlevsoi_hyd)                 ! water potential in absorbing roots                                [MPa]
+     real(r8) ::  btran(nclmax)                          ! soil moisture limitation on gs                                    [0-1]
+      
   end type ed_cohort_type
 
   !************************************

@@ -11,6 +11,7 @@ module SoilWaterRetentionCurveMod
   !
   ! !PUBLIC TYPES:
   public :: soil_water_retention_curve_type
+  !
 
   type, abstract :: soil_water_retention_curve_type
      private

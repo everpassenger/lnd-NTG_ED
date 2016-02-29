@@ -13,7 +13,8 @@ module CanopyFluxesMod
   use shr_kind_mod          , only : r8 => shr_kind_r8
   use shr_log_mod           , only : errMsg => shr_log_errMsg
   use abortutils            , only : endrun
-  use clm_varctl            , only : iulog, use_cn, use_lch4, use_c13, use_c14, use_cndv, use_ed, use_luna
+  use clm_varctl            , only : iulog, use_cn, use_lch4, use_c13, use_c14, use_cndv, use_luna
+  use clm_varctl            , only : use_ed, use_ed_planthydraulics
   use clm_varpar            , only : nlevgrnd, nlevsno
   use clm_varcon            , only : namep 
   use pftconMod             , only : nbrdlf_dcd_tmp_shrub, pftcon
@@ -48,6 +49,7 @@ module CanopyFluxesMod
   use ColumnType            , only : col                
   use PatchType             , only : patch                
   use EDTypesMod            , only : ed_site_type
+  use EDPlantHydraulicsMod  , only : hydraulics_drive
   use SoilWaterRetentionCurveMod, only : soil_water_retention_curve_type
   use CNVegNitrogenStateType, only : cnveg_nitrogenstate_type
   use LunaMod               , only : Update_Photosynthesis_Capacity, Acc24_Climate_LUNA,Acc240_Climate_LUNA,Clear24_Climate_LUNA
@@ -496,11 +498,20 @@ contains
       ! FIX(FIX(SPM,032414),032414) refactor this...
       if ( use_ed ) then  
 
-         do f = 1, fn
-            p = filterp(f)
-            call btran_ed(bounds, p, ed_allsites_inst(begg:endg), &
-                 soilstate_inst, waterstate_inst, temperature_inst, energyflux_inst)
-         enddo
+         if ( use_ed_planthydraulics == 0 ) then  
+	 
+            do f = 1, fn
+               p = filterp(f)
+               call btran_ed(bounds, p, ed_allsites_inst(begg:endg), &
+                    soilstate_inst, waterstate_inst, temperature_inst, energyflux_inst)
+            enddo
+	 
+	 else
+	 
+	    call hydraulics_drive(bounds, ed_allsites_inst(begg:endg), &
+                 soilstate_inst, waterflux_inst, waterstate_inst, temperature_inst, energyflux_inst)
+	 
+	 endif !use_ed_planthydraulics == 0
 
       else
 
@@ -737,25 +748,48 @@ contains
 
          if ( use_ed ) then      
 
-            call t_startf('edpsn')
-            ! FIX(FIX(SPM,032414),032414) Photo*_ED will need refactoring
-            call Photosynthesis_ED (bounds, fn, filterp, &
-                 svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
-                 co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
-                 ed_allsites_inst(begg:endg), atm2lnd_inst, temperature_inst, canopystate_inst, photosyns_inst)
+            if( use_ed_planthydraulics == 0) then
+	    
+               call t_startf('edpsn')
+               ! FIX(FIX(SPM,032414),032414) Photo*_ED will need refactoring
+               call Photosynthesis_ED (bounds, fn, filterp, &
+                    svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
+                    co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
+                    ed_allsites_inst(begg:endg), atm2lnd_inst, temperature_inst, canopystate_inst, photosyns_inst)
 
-            ! zero all of these things, not just the ones in the filter. 
-            do p = bounds%begp,bounds%endp 
-               photosyns_inst%rssun_patch(p)    = 0._r8
-               photosyns_inst%rssha_patch(p)    = 0._r8
-               photosyns_inst%psnsun_patch(p)   = 0._r8
-               photosyns_inst%psnsha_patch(p)   = 0._r8
-               photosyns_inst%fpsn_patch(p)     = 0._r8
-               canopystate_inst%laisun_patch(p) = 0._r8
-               canopystate_inst%laisha_patch(p) = 0._r8
-            enddo
+               ! zero all of these things, not just the ones in the filter. 
+               do p = bounds%begp,bounds%endp 
+                  photosyns_inst%rssun_patch(p)    = 0._r8
+                  photosyns_inst%rssha_patch(p)    = 0._r8
+                  photosyns_inst%psnsun_patch(p)   = 0._r8
+                  photosyns_inst%psnsha_patch(p)   = 0._r8
+                  photosyns_inst%fpsn_patch(p)     = 0._r8
+                  canopystate_inst%laisun_patch(p) = 0._r8
+                  canopystate_inst%laisha_patch(p) = 0._r8
+               enddo
+	       
+            else
 
-            call t_stopf('edpsn')
+               call t_startf('ednpsn')
+               call Photosynthesis_ED (bounds, fn, filterp, &
+                    svpts(begp:endp), eah(begp:endp), o2(begp:endp), &
+                    co2(begp:endp), rb(begp:endp), dayl_factor(begp:endp), &
+                    ed_allsites_inst(begg:endg), atm2lnd_inst, temperature_inst, canopystate_inst, photosyns_inst)
+
+               ! zero all of these things, not just the ones in the filter. 
+               do p = bounds%begp,bounds%endp 
+                  photosyns_inst%rssun_patch(p)    = 0._r8
+                  photosyns_inst%rssha_patch(p)    = 0._r8
+                  photosyns_inst%psnsun_patch(p)   = 0._r8
+                  photosyns_inst%psnsha_patch(p)   = 0._r8
+                  photosyns_inst%fpsn_patch(p)     = 0._r8
+                  canopystate_inst%laisun_patch(p) = 0._r8
+                  canopystate_inst%laisha_patch(p) = 0._r8
+               enddo
+
+               call t_stopf('ednpsn')
+	       
+	    endif !use_ed_planthydraulics
 
          else ! not use_ed
 

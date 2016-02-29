@@ -34,6 +34,7 @@ module clm_varpar
   integer, parameter :: ngases      =   3     ! CH4, O2, & CO2
   integer, parameter :: nlevcan     =   1     ! number of leaf layers in canopy layer
   !ED variables
+  integer, parameter :: nlevsoi_hyd =   10    ! number of soil layers for indexing cohort fine root quanitities (FIX THIS)
   integer, parameter :: nlevcan_ed  =   40    ! number of leaf layers in canopy layer
   integer, parameter :: nclmax      =   2     ! max number of canopy layers
   integer, parameter :: numwat      =   5     ! number of water types (soil, ice, 2 lakes, wetland)
