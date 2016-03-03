@@ -195,7 +195,7 @@ module clm_varctl
 
   logical, public :: use_ed = .false.            ! true => use  ED
   logical, public :: use_ed_spit_fire = .false.  ! true => use spitfire model
-  integer, public :: use_ed_planthydraulics = 1 ! use different plant hydraulics; 0-use Btran; 1-use BC hydraulics; 2-use CX hydraulics
+  integer, public :: use_ed_planthydraulics = 0  ! use different plant hydraulics; 0-use Btran; 1-use BC hydraulics; 2-use CX hydraulics
 
   !----------------------------------------------------------
   !  LUNA switches		

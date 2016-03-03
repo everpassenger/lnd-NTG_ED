@@ -27,11 +27,14 @@ contains
    !
    !DESCRIPTIONS
    !initialize the default pedotransfer function
+   use clm_varctl    , only : use_ed_planthydraulics
    implicit none
    
    
-   !ipedof0 = cosby_1984_table5                     !the default pedotransfer function
-   ipedof0 = hodnett_tomasella                      !BOC...added for NGEE-Tropics hydraulics
+   ipedof0 = cosby_1984_table5                     !the default pedotransfer function
+   if (use_ed_planthydraulics == 1) then
+      ipedof0 = hodnett_tomasella                  !BOC...overwrite pedotransfer function if Brad's hydraulics turned on
+   end if
    end subroutine init_pedof
    
 !------------------------------------------------------------------------------------------
@@ -46,21 +49,21 @@ contains
    real(r8), intent(in) :: sand     !% sand
    real(r8), intent(in) :: clay     !% clay
    real(r8), intent(out):: watsat   !v/v saturate moisture         [m3 m-3] (for C&H and van Genuchten SWC)
-   real(r8), intent(out):: watres   !v/v residual moisture         [m3 m-3] (for van Genuchten SWC only)
-   real(r8), intent(out):: alpha_VG !inverse of air-entry pressure [MPa-1]  (for van Genuchten SWC only)
-   real(r8), intent(out):: n_VG     !pore-size distribution index  [-]      (for van Genuchten SWC only)
-   real(r8), intent(out):: m_VG     != 1 - 1/n_VG                  [-]      (for van Genuchten SWC only)
-   real(r8), intent(out):: l_VG     !pore tortuosity parameter     [-]      (for van Genuchten SWC only)
    real(r8), intent(out):: bsw      !b shape parameter
    real(r8), intent(out):: sucsat   !mm, soil matric potential
    real(r8), intent(out):: xksat    !mm/s, saturated hydraulic conductivity
+   real(r8), optional, intent(out):: watres   !v/v residual moisture         [m3 m-3] (for van Genuchten SWC only)
+   real(r8), optional, intent(out):: alpha_VG !inverse of air-entry pressure [MPa-1]  (for van Genuchten SWC only)
+   real(r8), optional, intent(out):: n_VG     !pore-size distribution index  [-]      (for van Genuchten SWC only)
+   real(r8), optional, intent(out):: m_VG     != 1 - 1/n_VG                  [-]      (for van Genuchten SWC only)
+   real(r8), optional, intent(out):: l_VG     !pore tortuosity parameter     [-]      (for van Genuchten SWC only)
    
    character(len=32) :: subname = 'pedotransf'  ! subroutine name 
    select case (ipedof)
    case (cosby_1984_table4)
       call pedotransf_cosby1984_table4(sand, clay, watsat, bsw, sucsat, xksat)
    case (hodnett_tomasella)
-      call pedotransf_hodnett_tomasella(sand, clay, watsat, watres, alpha_VG, n_VG, m_VG, l_VG, xksat)
+      call pedotransf_hodnett_tomasella(sand, clay, watsat, watres, alpha_VG, n_VG, m_VG, l_VG, bsw, sucsat, xksat)
    case (noilhan_lacarrere_1995)
       call pedotransf_noilhan_lacarrere1995(sand, clay, watsat, bsw, sucsat, xksat) 
    case (cosby_1984_table5)  
@@ -94,7 +97,7 @@ contains
    end subroutine pedotransf_cosby1984_table4
    
 !------------------------------------------------------------------------------------------
-   subroutine pedotransf_hodnett_tomasella(sand, clay, watsat, watres, alpha_VG, n_VG, m_VG, l_VG, xksat)
+   subroutine pedotransf_hodnett_tomasella(sand, clay, watsat, watres, alpha_VG, n_VG, m_VG, l_VG, bsw, sucsat, xksat)
    !
    !created by Brad Christoffersen
    !
@@ -121,8 +124,10 @@ contains
    real(r8), intent(out):: n_VG        !pore-size distribution index      [-]      (for van Genuchten SWC only)
    real(r8), intent(out):: m_VG        != 1 - 1/n_VG                      [-]      (for van Genuchten SWC only)
    real(r8), intent(out):: l_VG        !pore tortuosity parameter         [-]      (for van Genuchten SWC only)
+   real(r8), intent(out):: bsw         !b shape parameter
+   real(r8), intent(out):: sucsat      !mm, soil matric potential
    real(r8), intent(out):: xksat       !saturated hydraulic conductivity  [mm/s]
-   
+
    ! !LOCAL VARIABLES:
    integer    :: texture_class
    
@@ -195,9 +200,18 @@ contains
    end SELECT
    
    m_VG   = 1._r8 - 1._r8/n_VG
-   xksat  = 0.0070556 *(10.**(-0.60+0.0126*sand-0.0064*clay) )     !from Cosby; H&T have no PTFs for xksat.
    l_VG   = 0.5_r8
       
+   !BOC...NOTE: Current plant hydraulics routine solves for root water uptake by updating soil water contents, but uses a different pedotransfer function.
+   !   As of yet, I have not implemented Jinyun's interface for using the same pedotransfer function for the vertical fluxes in SoilWater()
+   !   Thus it is necessary to make sure the watsat values are consistent between the two (inconsistent!) pedotransfer functions used in plant+soil hydraulics and the CLM soil hydrology
+   !   The below does 3 things:
+   !      overwrites the above H&T watsat value with Cosby value
+   !      ensures that bsw and sucsat parameters necessary for doing vertical water fluxes get assigned
+   !      assigns xksat, for which no tropical pedotransfer function exists
+   !BOC... This is not an ideal implementation and should/will be replaced with consistent pedotransfer functions for root water uptake and vertical water fluxes
+   call pedotransf_cosby1984_table5(sand, clay, watsat, bsw, sucsat, xksat)
+
    end subroutine pedotransf_hodnett_tomasella
    
 !------------------------------------------------------------------------------------------

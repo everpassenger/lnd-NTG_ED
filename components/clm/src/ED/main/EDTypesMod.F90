@@ -6,21 +6,13 @@ module EDTypesMod
   use clm_varpar   , only : nlevsoi, nlevsoi_hyd
   use domainMod    , only : domain_type
   use shr_sys_mod  , only : shr_sys_flush
-  !use EDPlantHydraulicsMod, only : npool_ag, npool_bg, nshell   ! BOC...discretized # of above-, below-ground, and rhizosphere nodes
+  use pftconMod    , only : npool_ag, npool_bg, nshell   ! BOC...discretized # of above-, below-ground, and rhizosphere nodes
 
   implicit none
   save
 
   !SWITCHES THAT ARE READ IN
   integer         RESTART                                  ! restart flag, 1= read initial system state 0 = bare ground
-
-  integer             , parameter :: npool_leaf  = 1                      ! 
-  integer             , parameter :: npool_stem  = 1                      ! 
-  integer             , parameter :: npool_troot = 1                      ! 
-  integer             , parameter :: npool_aroot = 1                      ! 
-  integer             , parameter :: npool_ag    = npool_leaf+npool_stem  ! number of aboveground plant water storage nodes
-  integer             , parameter :: npool_bg    = npool_troot            ! number of belowground plant water storage nodes (except absorbing roots)
-  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
 
   ! MODEL PARAMETERS
   real(r8)            :: timestep_secs                     ! subdaily timestep in seconds (e.g. 1800 or 3600) 

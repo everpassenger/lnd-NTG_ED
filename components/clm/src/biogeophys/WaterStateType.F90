@@ -16,7 +16,7 @@ module WaterstateType
   use clm_varcon     , only : spval
   use LandunitType   , only : lun                
   use ColumnType     , only : col                
-  !use EDPlantHydraulicsMod, only : nshell   !BC...added
+  use pftconMod      , only : nshell   !BOC... added for plant hydraulics
 
   !
   implicit none
@@ -24,7 +24,6 @@ module WaterstateType
   private
   !
   ! !PUBLIC TYPES:
-  integer, parameter :: nshell = 11 ! number of concentric soil cylinders surrounding absorbing root
   type, public :: waterstate_type
 
      logical , pointer :: do_capsnow_col         (:)   ! col true => do snow capping
@@ -190,8 +189,8 @@ contains
     allocate(this%h2osoi_ice_col         (begc:endc,-nlevsno+1:nlevgrnd)) ; this%h2osoi_ice_col         (:,:) = nan
     allocate(this%h2osoi_liq_col         (begc:endc,-nlevsno+1:nlevgrnd)) ; this%h2osoi_liq_col         (:,:) = nan
 
-    if(use_ed_planthydraulics /=  0) then
-    allocate(this%h2osoi_vol_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%h2osoi_vol_shell    (:,:,:) = nan
+    if(use_ed_planthydraulics ==  1) then
+       allocate(this%h2osoi_vol_shell    (begc:endc,1:nlevsoi,1:nshell))  ; this%h2osoi_vol_shell       (:,:,:) = nan
     end if
 
     allocate(this%h2ocan_patch           (begp:endp))                     ; this%h2ocan_patch           (:)   = nan  

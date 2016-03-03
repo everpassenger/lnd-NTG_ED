@@ -9,7 +9,7 @@ module SoilStateType
   use abortutils      , only : endrun
   use clm_varpar      , only : nlevsoi, nlevgrnd, nlevlak, nlayer, nlevsno
   use clm_varcon      , only : spval
-  use clm_varctl      , only : use_cn, use_lch4
+  use clm_varctl      , only : use_cn, use_lch4, use_ed_planthydraulics
   use clm_varctl      , only : iulog, hist_wrtch4diag
   use LandunitType    , only : lun                
   use ColumnType      , only : col                
@@ -132,8 +132,13 @@ contains
 
     allocate(this%bsw_col              (begc:endc,nlevgrnd))            ; this%bsw_col              (:,:) = nan
     allocate(this%watsat_col           (begc:endc,nlevgrnd))            ; this%watsat_col           (:,:) = nan
-    allocate(this%watres_col           (begc:endc,nlevgrnd))            ; this%watres_col           (:,:) = nan
-    allocate(this%alpha_VG_col         (begc:endc,nlevgrnd))            ; this%alpha_VG_col         (:,:) = nan
+    if(use_ed_planthydraulics == 1) then
+       allocate(this%watres_col        (begc:endc,nlevgrnd))            ; this%watres_col           (:,:) = nan
+       allocate(this%alpha_VG_col      (begc:endc,nlevgrnd))            ; this%alpha_VG_col         (:,:) = nan
+       allocate(this%n_VG_col          (begc:endc,nlevgrnd))            ; this%n_VG_col             (:,:) = nan
+       allocate(this%m_VG_col          (begc:endc,nlevgrnd))            ; this%m_VG_col             (:,:) = nan
+       allocate(this%l_VG_col          (begc:endc,nlevgrnd))            ; this%l_VG_col             (:,:) = nan
+    end if
     allocate(this%watdry_col           (begc:endc,nlevgrnd))            ; this%watdry_col           (:,:) = spval
     allocate(this%watopt_col           (begc:endc,nlevgrnd))            ; this%watopt_col           (:,:) = spval
     allocate(this%watfc_col            (begc:endc,nlevgrnd))            ; this%watfc_col            (:,:) = nan

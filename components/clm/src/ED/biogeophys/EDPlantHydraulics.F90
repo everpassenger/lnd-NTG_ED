@@ -8,7 +8,10 @@ module EDPlantHydraulicsMod
   use shr_kind_mod     , only : r8 => shr_kind_r8;
   use clm_varctl       , only : use_ed_planthydraulics
   use pftconMod        , only : pftcon
-  use EDTypesMod       , only : ed_patch_type, ed_cohort_type, numpft_ed
+  use pftconMod        , only : npool_leaf, npool_stem, npool_troot, npool_aroot, &
+				npool_ag, npool_bg, nshell, n_porous_media, npool_tot, &
+				porous_media
+  use EDTypesMod       , only : ed_patch_type, ed_cohort_type
   use EDEcophysContype , only : EDecophyscon
   use GridcellType     , only : grc
   use ColumnType       , only : col
@@ -33,16 +36,6 @@ module EDPlantHydraulicsMod
   !
   !type(ed_cohort_type), pointer   :: currentCohort   ! current cohort   !! are these needed here ???
   !type(ed_patch_type) , pointer   :: currentPatch    ! current patch    !! are these needed here ???
-  integer             , parameter :: npool_leaf  = 1                      ! 
-  integer             , parameter :: npool_stem  = 1                      ! 
-  integer             , parameter :: npool_troot = 1                      ! 
-  integer             , parameter :: npool_aroot = 1                      ! 
-  integer             , parameter :: npool_ag    = npool_leaf+npool_stem  ! number of aboveground plant water storage nodes
-  integer             , parameter :: npool_bg    = npool_troot            ! number of belowground plant water storage nodes (except absorbing roots)
-  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
-  integer             , parameter :: npool_tot   = npool_ag + 2 + nshell
-  integer             , parameter :: n_porous_media = 5
-  integer                         :: porous_media(npool_tot)              ! 1=leaf, 2=stem, 3=troot, 4=aroot, 5=soil
   
   ! 01/18/16: Created by Brad Christoffersen
   !------------------------------------------------------------------------------

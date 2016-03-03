@@ -13,7 +13,6 @@ module SoilWaterMovementMod
   private
   !
   ! !PUBLIC MEMBER FUNCTIONS:
-  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
   public :: SoilWater            ! Calculate soil hydrology   
   public :: init_soilwater_movement
   !
@@ -325,7 +324,6 @@ contains
     use clm_varcon                 , only : wimp,grav,hfus,tfrz
     use clm_varcon                 , only : e_ice,denh2o, denice
     use clm_varctl                 , only : use_ed_planthydraulics
-    !use EDPlantHydraulics          , only : nshell
     use clm_varpar                 , only : nlevsoi, max_patch_per_col, nlevgrnd
     use clm_time_manager           , only : get_step_size
     use column_varcon              , only : icol_roof, icol_road_imperv
@@ -860,6 +858,7 @@ contains
     ! shell until the change in mean layer water (dwat2) is accounted for.
     !
     ! !USES:
+    use pftconMod          , only : nshell
     use shr_kind_mod       , only : r8 => shr_kind_r8     
     use clm_varcon         , only : denh2o
     use clm_varctl         , only : iulog
