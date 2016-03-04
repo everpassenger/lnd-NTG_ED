@@ -7,7 +7,7 @@ module EDMainMod
   use shr_kind_mod         , only : r8 => shr_kind_r8
   use spmdMod              , only : masterproc
   use decompMod            , only : bounds_type
-  use clm_varctl           , only : iulog
+  use clm_varctl           , only : iulog, use_ed_planthydraulics
   use atm2lndType          , only : atm2lnd_type
   use SoilStateType        , only : soilstate_type  
   use TemperatureType      , only : temperature_type
@@ -291,7 +291,9 @@ contains
           call allocate_live_biomass(currentCohort,1)
 
           ! BOC...update tree 'hydraulic geometry' (size --> heights of elements --> hydraulic path lengths --> maximum node-to-node conductances)
-          call hydraulics_TreeHydGeom(currentCohort)
+          if(use_ed_planthydraulics == 1) then
+             call hydraulics_TreeHydGeom(currentCohort)
+          end if
 
           currentCohort => currentCohort%taller
 
@@ -365,8 +367,10 @@ contains
     enddo
 
     ! BOC...update 'rhizosphere geometry' (column-level root biomass + rootfr --> root length density --> node radii and volumes)
-    call hydraulics_RhizHydGeom(currentSite, soilstate_inst, waterstate_inst)
-
+    if(use_ed_planthydraulics == 1) then
+       call hydraulics_RhizHydGeom(currentSite, soilstate_inst, waterstate_inst)
+    end if
+  
   end subroutine ed_integrate_state_variables
 
   !-------------------------------------------------------------------------------!
@@ -523,9 +527,9 @@ contains
     use pftconMod          , only : pftcon
     use shr_const_mod      , only : SHR_CONST_PI
     use EDEcophysConType   , only : EDecophyscon
-    use clm_varpar         , only : nlevsoi
+    use clm_varpar         , only : nlevsoi, nlevsoi_hyd
     use clm_varcon         , only : zisoi
-    use EDTypesMod         , only : npool_leaf, npool_stem, npool_troot, npool_ag, npool_bg, nlevsoi_hyd
+    use pftconMod          , only : npool_leaf, npool_stem, npool_troot, npool_ag, npool_bg
     !
     ! !ARGUMENTS:
     type(ed_cohort_type)   , intent(inout), target  :: cc_p ! current cohort pointer

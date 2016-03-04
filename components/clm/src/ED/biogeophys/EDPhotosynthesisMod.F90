@@ -313,7 +313,7 @@ contains
 
       do f = 1,fn
          p = filterp(f)
-         call t_startf('edfluxes')
+!LANL!   call t_startf('edfluxes')
 
          ! NOTE: THESE ARE ZEROED EVEN IF THERE'S NO PATCH! 
 
@@ -922,7 +922,7 @@ contains
                      currentCohort%rd       = currentCohort%rd      + lmr_z(cl,ft,currentCohort%nv)    * &
                           currentPatch%elai_profile(cl,ft,currentCohort%nv) * laifrac * tree_area 
 
-                     call t_stopf('edfluxunpack1')      
+!LANL!               call t_stopf('edfluxunpack1')      
                      call t_startf('edfluxunpack2')
 
                      !------------------------------------------------------------------------------
@@ -1059,7 +1059,7 @@ contains
          end if !edpatch
 
          call t_stopf('edfluxunpack3')
-         call t_stopf('edunpack')  
+!LANL!   call t_stopf('edunpack')  
 
       end do !patch loop
 

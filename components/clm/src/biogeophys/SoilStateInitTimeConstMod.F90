@@ -9,6 +9,7 @@ module SoilStateInitTimeConstMod
   use LandunitType  , only : lun                
   use ColumnType    , only : col                
   use PatchType     , only : patch                
+  use clm_varctl    , only : use_ed_planthydraulics
   !
   implicit none
   private
@@ -452,10 +453,15 @@ contains
                 !I set soil order to 0 for all soils. Jinyun Tang, Mar 20, 2014
 
                 ipedof=get_ipedof(0)
-                call pedotransf(ipedof, sand, clay, &
-                     soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat, &
-		     soilstate_inst%watres_col(c,lev), soilstate_inst%alpha_VG_col(c,lev), soilstate_inst%n_VG_col(c,lev), &
-		     soilstate_inst%m_VG_col(c,lev), soilstate_inst%l_VG_col(c,lev))
+		if (use_ed_planthydraulics /= 1) then
+                   call pedotransf(ipedof, sand, clay, &
+                        soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat)
+		else
+                   call pedotransf(ipedof, sand, clay, &
+                        soilstate_inst%watsat_col(c,lev), soilstate_inst%bsw_col(c,lev), soilstate_inst%sucsat_col(c,lev), xksat, &
+	   	        soilstate_inst%watres_col(c,lev), soilstate_inst%alpha_VG_col(c,lev), soilstate_inst%n_VG_col(c,lev), &
+		        soilstate_inst%m_VG_col(c,lev), soilstate_inst%l_VG_col(c,lev))
+		end if
 
                 om_watsat         = max(0.93_r8 - 0.1_r8   *(zsoi(lev)/zsapric), 0.83_r8)
                 om_b              = min(2.7_r8  + 9.3_r8   *(zsoi(lev)/zsapric), 12.0_r8)

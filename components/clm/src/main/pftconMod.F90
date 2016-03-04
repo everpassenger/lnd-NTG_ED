@@ -10,14 +10,12 @@ module pftconMod
   use abortutils  , only : endrun
   use clm_varpar  , only : mxpft, numrad, ivis, inir
   use clm_varctl  , only : iulog, use_cndv, use_vertsoilc
-  !use EDPlantHydraulicsMod, only: n_porous_media
   !
   ! !PUBLIC TYPES:
   implicit none
   !
   ! Vegetation type constants
   !
-  integer             , parameter :: n_porous_media    = 5  ! 
   integer :: noveg                  ! value for not vegetated 
   integer :: ndllf_evr_tmp_tree     ! value for Needleleaf evergreen temperate tree
   integer :: ndllf_evr_brl_tree     ! value for Needleleaf evergreen boreal tree
@@ -102,6 +100,18 @@ module pftconMod
   integer :: nc3crop                ! value for generic crop (rf)
   integer :: nc3irrig               ! value for irrigated generic crop (ir)
 
+  ! PLANT HYDRAULICS
+  integer , parameter :: npool_leaf           = 1                      ! 
+  integer , parameter :: npool_stem           = 1                      ! 
+  integer , parameter :: npool_troot          = 1                      ! 
+  integer , parameter :: npool_aroot          = 1                      ! 
+  integer , parameter :: npool_ag             = npool_leaf+npool_stem  ! number of aboveground plant water storage nodes
+  integer , parameter :: npool_bg             = npool_troot            ! number of belowground plant water storage nodes (except absorbing roots)
+  integer , parameter :: nshell               = 11                     ! number of concentric soil cylinders surrounding absorbing root
+  integer , parameter :: n_porous_media       = 5                      ! number of distinct types of porous media (leaf, stem, troot, aroot, soil)
+  integer , parameter :: npool_tot            = npool_ag + 2 + nshell  !
+  integer             :: porous_media(npool_tot)                       ! vector indexing the type of porous medium over an arbitrary number of plant pools
+                                                                       ! 1=leaf, 2=stem, 3=troot, 4=aroot, 5=soil
   ! !PUBLIC TYPES:
   type, public :: pftcon_type
 

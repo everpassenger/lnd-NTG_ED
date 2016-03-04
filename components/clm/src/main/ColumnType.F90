@@ -23,7 +23,7 @@ module ColumnType
   use clm_varctl           , only : use_ed_planthydraulics
   use clm_varpar           , only : nlevsno, nlevgrnd, nlevsoi, nlevlak
   use clm_varcon           , only : spval, ispval
-  !use EDPlantHydraulics    , only : nshell
+  use pftconMod            , only : nshell     !BOC... added for plant hydraulics
   
   !
   ! !PUBLIC TYPES:
@@ -31,7 +31,6 @@ module ColumnType
   save
   private
   !
-  integer             , parameter :: nshell      = 11                     ! number of concentric soil cylinders surrounding absorbing root
   type, public :: column_type
      ! g/l/c/p hierarchy, local g/l/c/p cells only
      integer , pointer :: landunit             (:)   ! index into landunit level quantities
@@ -104,10 +103,10 @@ contains
     allocate(this%z           (begc:endc,-nlevsno+1:nlevgrnd)) ; this%z           (:,:) = nan
     allocate(this%zi          (begc:endc,-nlevsno+0:nlevgrnd)) ; this%zi          (:,:) = nan
     if(use_ed_planthydraulics == 1) then
-    allocate(this%r_out_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%r_out_shell (:,:,:) = nan
-    allocate(this%r_node_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%r_node_shell (:,:,:) = nan
-    allocate(this%v_shell     (begc:endc,1:nlevsoi,1:nshell)) ; this%v_shell     (:,:,:) = nan
-    allocate(this%l_aroot_col (begc:endc,1:nlevsoi))          ; this%l_aroot_col (:,:) = nan
+       allocate(this%r_out_shell (begc:endc,1:nlevsoi,1:nshell)) ; this%r_out_shell (:,:,:) = nan
+       allocate(this%r_node_shell(begc:endc,1:nlevsoi,1:nshell)) ; this%r_node_shell(:,:,:) = nan
+       allocate(this%v_shell     (begc:endc,1:nlevsoi,1:nshell)) ; this%v_shell     (:,:,:) = nan
+       allocate(this%l_aroot_col (begc:endc,1:nlevsoi))          ; this%l_aroot_col (:,:) = nan
     end if
     allocate(this%zii         (begc:endc))                     ; this%zii         (:)   = nan
     allocate(this%lakedepth   (begc:endc))                     ; this%lakedepth   (:)   = spval  
@@ -143,10 +142,10 @@ contains
     deallocate(this%z          )
     deallocate(this%zi         )
     if(use_ed_planthydraulics == 1) then
-    deallocate(this%r_out_shell)
-    deallocate(this%r_node_shell)
-    deallocate(this%v_shell    )
-    deallocate(this%l_aroot_col)
+       deallocate(this%r_out_shell)
+       deallocate(this%r_node_shell)
+       deallocate(this%v_shell    )
+       deallocate(this%l_aroot_col)
     end if
     deallocate(this%zii        )
     deallocate(this%lakedepth  )
